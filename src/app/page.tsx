@@ -17,6 +17,7 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { UIMessage } from 'ai';
+import { MemoizedMarkdown } from '../components/custom/memoized-markdown';
 
 export default function ChatInterface() {
     const {
@@ -25,10 +26,12 @@ export default function ChatInterface() {
         handleInputChange,
         handleSubmit,
         isLoading,
-        addToolResult,
+        // addToolResult,
         error,
     } = useChat({
         maxSteps: 5,
+        // Throttle the messages and data updates to 50ms:
+        experimental_throttle: 50,
         // onToolCall: async ({ toolCall }) => {
         //     if (toolCall.toolName === 'getBalance') {
         //         const cities = [
@@ -52,61 +55,107 @@ export default function ChatInterface() {
 
     const renderMessage = (message: UIMessage) => {
         if (message.role === 'user') {
-            return <p className="text-sm">{message.content}</p>;
+            return (
+                <div
+                    key={message.id}
+                    className="flex gap-2 items-start p-2 rounded-lg"
+                >
+                    <Avatar>
+                        <AvatarImage
+                            src="/placeholder.svg?height=40&width=40"
+                            alt="you"
+                        />
+                        <AvatarFallback>You</AvatarFallback>
+                    </Avatar>
+                    <div className="prose space-y-2 bg-primary/10 p-4 rounded-lg w-full">
+                        <MemoizedMarkdown
+                            id={message.id}
+                            content={message.content}
+                        />
+                    </div>
+                </div>
+            );
         }
 
         if (message.role === 'assistant') {
             return (
-                <>
-                    {message.parts.map((part) => {
-                        switch (part.type) {
-                            // render text parts as simple text:
-                            case 'text':
-                                return part.text;
-
-                            // for tool invocations, distinguish between the tools and the state:
-                            case 'tool-invocation': {
-                                const toolCallId =
-                                    part.toolInvocation.toolCallId;
-
-                                switch (part.toolInvocation.state) {
-                                    // example of pre-rendering streaming tool calls:
-                                    case 'partial-call':
-                                        return (
-                                            <pre key={toolCallId}>
-                                                {JSON.stringify(
-                                                    part.toolInvocation,
-                                                    null,
-                                                    2
-                                                )}
-                                            </pre>
-                                        );
-                                    case 'call':
+                <div
+                    key={message.id}
+                    className="flex flex-col gap-2 rounded-lg"
+                >
+                    <div className="flex items-start gap-2 p-2 rounded-lg">
+                        <Avatar>
+                            <AvatarImage
+                                src="/placeholder.svg?height=40&width=40"
+                                alt="you"
+                            />
+                            <AvatarFallback>AI</AvatarFallback>
+                        </Avatar>
+                        <div className="flex flex-col bg-primary/10 p-2 rounded-lg w-full">
+                            {message.parts.map((part) => {
+                                switch (part.type) {
+                                    // render text parts as simple text:
+                                    case 'text':
                                         return (
                                             <div
-                                                key={toolCallId}
-                                                className="text-gray-500"
+                                                key={message.id}
+                                                className="prose space-y-2"
                                             >
-                                                Calling tool{' '}
-                                                {part.toolInvocation.toolName}
-                                                ...
+                                                <MemoizedMarkdown
+                                                    id={message.id}
+                                                    content={message.content}
+                                                />
                                             </div>
                                         );
-                                    case 'result':
-                                        return (
-                                            <div
-                                                key={toolCallId}
-                                                className="text-gray-500"
-                                            >
-                                                Result:{' '}
-                                                {part.toolInvocation.result}
-                                            </div>
-                                        );
+
+                                    // for tool invocations, distinguish between the tools and the state:
+                                    case 'tool-invocation': {
+                                        const toolCallId =
+                                            part.toolInvocation.toolCallId;
+
+                                        switch (part.toolInvocation.state) {
+                                            // example of pre-rendering streaming tool calls:
+                                            case 'partial-call':
+                                                return (
+                                                    <pre key={toolCallId}>
+                                                        {JSON.stringify(
+                                                            part.toolInvocation,
+                                                            null,
+                                                            2
+                                                        )}
+                                                    </pre>
+                                                );
+                                            case 'call':
+                                                return (
+                                                    <div
+                                                        key={toolCallId}
+                                                        className="text-gray-500"
+                                                    >
+                                                        Calling tool{' '}
+                                                        {
+                                                            part.toolInvocation
+                                                                .toolName
+                                                        }
+                                                        ...
+                                                    </div>
+                                                );
+                                            // case 'result':
+                                            //     return (
+                                            //         <MemoizedMarkdown
+                                            //             id={toolCallId}
+                                            //             content={
+                                            //                 part.toolInvocation
+                                            //                     .result
+                                            //             }
+                                            //         />
+                                            //     );
+                                        }
+                                    }
                                 }
-                            }
-                        }
-                    })}
-                </>
+                            })}
+                        </div>
+                    </div>
+                </div>
             );
         }
 
@@ -133,47 +182,15 @@ export default function ChatInterface() {
                                 <div className="bg-primary/10 rounded-lg p-4">
                                     <p className="text-sm">
                                         Hello! I'm your AI assistant with access
-                                        to tools. I can help you with weather
-                                        information and current time for
-                                        different locations. How can I assist
-                                        you today?
+                                        to tools. I can help you with your
+                                        Binance usage. How can I assist you
+                                        today?
                                     </p>
                                 </div>
                             </div>
                         )}
-                        {messages.map((message) => (
-                            <div
-                                key={message.id}
-                                className="flex items-start space-x-4 mb-4"
-                            >
-                                <Avatar>
-                                    <AvatarImage
-                                        src={
-                                            message.role === 'user'
-                                                ? '/placeholder.svg?height=40&width=40'
-                                                : '/placeholder.svg?height=40&width=40'
-                                        }
-                                        alt={
-                                            message.role === 'user'
-                                                ? 'User'
-                                                : 'AI'
-                                        }
-                                    />
-                                    <AvatarFallback>
-                                        {message.role === 'user' ? 'U' : 'AI'}
-                                    </AvatarFallback>
-                                </Avatar>
-                                <div
-                                    className={`rounded-lg p-4 ${
-                                        message.role === 'user'
-                                            ? 'bg-primary text-primary-foreground'
-                                            : 'bg-muted'
-                                    }`}
-                                >
-                                    {renderMessage(message)}
-                                </div>
-                            </div>
-                        ))}
+
+                        {messages.map((message) => renderMessage(message))}
                         {isLoading && (
                             <div className="flex items-center space-x-2">
                                 <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-primary"></div>

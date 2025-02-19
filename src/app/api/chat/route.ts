@@ -1,3 +1,4 @@
+// api/chat/route.ts
 import { streamText } from 'ai';
 import { google } from '@ai-sdk/google';
 import BinanceService from '../../../../service/binance';
@@ -8,6 +9,7 @@ export async function POST(req: Request) {
     const tools = {
         getBalance: BinanceService.getBalance,
         getTradeHistory: BinanceService.getTradeHistory,
+        entry: BinanceService.entry,
     };
 
     const { messages } = await req.json();
